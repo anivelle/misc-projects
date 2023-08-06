@@ -40,9 +40,12 @@ int main(int argc, char *argv[]) {
 
     err = Pa_StartStream(stream);
 
+    // Wait for the song to end
     while (!ended) {
     };
     err = Pa_StopStream(stream);
+
+    // Just for funsies
     float sequence[LENGTH];
     float complex output[LENGTH];
     for (int i = 0; i < LENGTH; i++) {
@@ -60,17 +63,22 @@ int main(int argc, char *argv[]) {
 int callback(const void *input, void *output, unsigned long frameCount,
              const PaStreamCallbackTimeInfo *timeInfo,
              PaStreamCallbackFlags statusFlags, void *userData) {
-    SNDFILE *music = (SNDFILE *)userData;
-    float *out = (float *)output;
+    SNDFILE *music = (SNDFILE *)userData; // Take in the audio file
+    float *out = (float *)output;         // Cast output buffer
     (void)input;
 
     // https://github.com/hosackm/wavplayer/blob/master/src/wavplay.c
     // Realized I had to multiply the frameCount by the number of channels in
     // the audio from this page. Also helped with stream starting
+    //
+    // Reads audio from the input file straight into the output buffer
     sf_count_t count = sf_read_float(music, out, frameCount * 2);
+
+    // Same way file reading works. If we read less than expected, we've reached
+    // the end
     if (count == frameCount * 2)
         return paContinue;
 
-    ended = 1;
+    ended = 1; // Mark the ending of the song
     return paComplete;
 }
