@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <complex.h>
 #include <math.h>
@@ -19,11 +21,6 @@ int ended = 0;
 char *file = "libera.mp3";
 
 int main(int argc, char *argv[]) {
-    PaErrorCode err = Pa_Initialize();
-    if (err != paNoError) {
-        printf("Issue starting PortAudio.\n");
-        return 1;
-    }
 
     SF_INFO info;
     info.format = 0;
@@ -33,56 +30,70 @@ int main(int argc, char *argv[]) {
         file = argv[1];
 
     // Open audio file for reading
-    SNDFILE *music = sf_open(file, SFM_READ, &info);
+    SNDFILE *music;
     PaStream *stream;
 
-    // Synchronous playback - will use this so I have easier access to the data
-    // that is being read.
-    err = Pa_OpenDefaultStream(&stream, 0, info.channels, paFloat32,
-                               info.samplerate, 512, NULL, music);
+    int pipes[2];
+    pipe(pipes);
 
-    // Asynchronous callback - cool but I'm not sure how the timing will work
-    // when trying to capture a specific frame of data to read
-    /* err = Pa_OpenDefaultStream(&stream, 0, info.channels, paFloat32, */
-    /*                            info.samplerate, 512, &callback, music); */
+    pid_t child = fork();
 
-    if (err != paNoError) {
-        printf("Error opening stream\n");
-        return 1;
-    }
-
-    err = Pa_StartStream(stream);
-    sf_count_t count = -1;
     signed long available;
-
     float *frames = malloc(FRAMECOUNT * info.channels);
+    sf_count_t count = -1;
 
-    while (true) {
-        available = Pa_GetStreamWriteAvailable(stream);
-        if (available) {
+    if (child) {
+        close(pipes[1]);
+        int index = 0;
+        available = 1024;
+        InitWindow(640, 480, "FFT Visualization");
+        SetTargetFPS(60);
+        while (!WindowShouldClose()) {
             /* printf("%ld\n", available); */
-            count = sf_readf_float(music, frames, available);
             /* printf("%ld\n", count); */
-            Pa_WriteStream(stream, frames, available);
-            if (count < available)
-                break;
+            BeginDrawing();
+            ClearBackground(BLACK);
+            read(pipes[0], frames, 1024 * sizeof(float));
+            printf("%f\n", frames[1023]);
+            DrawRectangle(10 * (index % 64), 40 * (index % 24), 10, 40, BLUE);
+            index++;
+            EndDrawing();
         }
-    };
-    // err = Pa_StopStream(stream);
-
-    // Just for funsies
-
-    float sequence[LENGTH];
-    float complex output[LENGTH];
-    for (int i = 0; i < LENGTH; i++) {
-        sequence[i] = cosf(i * SEQ_STEP);
-        for (float j = -2; j < sequence[i] * 2; j += 0.05) {
-            printf(" ");
+        CloseWindow();
+        kill(child, SIGTERM); // Makes sure the music stops with the window
+    } else {
+        PaErrorCode err = Pa_Initialize();
+        music = sf_open(file, SFM_READ, &info);
+        if (err != paNoError) {
+            printf("Issue starting PortAudio.\n");
+            return 1;
         }
-        printf("*\n");
+        close(pipes[0]);
+        err = Pa_OpenDefaultStream(&stream, 0, info.channels, paFloat32,
+                                   info.samplerate, 512, NULL, music);
+        if (err != paNoError) {
+            printf("Error opening stream\n");
+            return 1;
+        }
+
+        err = Pa_StartStream(stream);
+        sf_count_t count = -1;
+
+        while (true) {
+            available = Pa_GetStreamWriteAvailable(stream);
+            if (available) {
+                // printf("Running\n");
+                count = sf_readf_float(music, frames, available);
+                Pa_WriteStream(stream, frames, available);
+                write(pipes[1], frames, 1024 * sizeof(float));
+                if (count < available)
+                    break;
+            }
+        }
+        err = Pa_StopStream(stream);
+        sf_close(music);
+        Pa_Terminate();
     }
-    sf_close(music);
-    Pa_Terminate();
     return 0;
 }
 
