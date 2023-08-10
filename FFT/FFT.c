@@ -17,32 +17,50 @@ int callback(const void *input, void *output, unsigned long frameCount,
              const PaStreamCallbackTimeInfo *timeInfo,
              PaStreamCallbackFlags statusFlags, void *userData);
 
+SNDFILE *music;
+PaStream *stream;
+float *frames;
+int pipes[2];
+
+// For the child only
+static void term_catch(int signo) {
+    Pa_StopStream(stream);
+    sf_close(music);
+    Pa_Terminate();
+    free(frames);
+    close(pipes[1]);
+    exit(EXIT_SUCCESS);
+}
+
 int ended = 0;
 char *file = "libera.mp3";
 
 int main(int argc, char *argv[]) {
+    PaErrorCode err = Pa_Initialize();
+    if (err != paNoError) {
+        printf("Issue starting PortAudio.\n");
+        return 1;
+    }
 
     SF_INFO info;
     info.format = 0;
+    // signal(SIGKILL, term_catch);
 
     // Take command-line input to select a file for now
     if (argc > 1)
         file = argv[1];
 
     // Open audio file for reading
-    SNDFILE *music;
-    PaStream *stream;
 
-    int pipes[2];
     pipe(pipes);
 
     pid_t child = fork();
 
     signed long available;
-    float *frames = malloc(FRAMECOUNT * info.channels);
     sf_count_t count = -1;
 
     if (child) {
+        frames = malloc(FRAMECOUNT * info.channels);
         close(pipes[1]);
         int index = 0;
         available = 1024;
@@ -53,24 +71,24 @@ int main(int argc, char *argv[]) {
             /* printf("%ld\n", count); */
             BeginDrawing();
             ClearBackground(BLACK);
-            read(pipes[0], frames, 1024 * sizeof(float));
-            printf("%f\n", frames[1023]);
+            read(pipes[0], frames, available * sizeof(float));
+            // printf("%f\n", frames[1023]);
             DrawRectangle(10 * (index % 64), 40 * (index % 24), 10, 40, BLUE);
             index++;
             EndDrawing();
         }
+        // free(frames);
+        if (!kill(child, 0))
+            kill(child, SIGTERM); // Makes sure the music stops with the window
         CloseWindow();
-        kill(child, SIGTERM); // Makes sure the music stops with the window
+        close(pipes[0]);
     } else {
-        PaErrorCode err = Pa_Initialize();
+        signal(SIGTERM, term_catch);
+        frames = malloc(FRAMECOUNT * info.channels);
         music = sf_open(file, SFM_READ, &info);
-        if (err != paNoError) {
-            printf("Issue starting PortAudio.\n");
-            return 1;
-        }
         close(pipes[0]);
         err = Pa_OpenDefaultStream(&stream, 0, info.channels, paFloat32,
-                                   info.samplerate, 512, NULL, music);
+                                   info.samplerate, FRAMECOUNT, NULL, music);
         if (err != paNoError) {
             printf("Error opening stream\n");
             return 1;
@@ -85,7 +103,7 @@ int main(int argc, char *argv[]) {
                 // printf("Running\n");
                 count = sf_readf_float(music, frames, available);
                 Pa_WriteStream(stream, frames, available);
-                write(pipes[1], frames, 1024 * sizeof(float));
+                write(pipes[1], frames, available * sizeof(float));
                 if (count < available)
                     break;
             }
@@ -93,6 +111,8 @@ int main(int argc, char *argv[]) {
         err = Pa_StopStream(stream);
         sf_close(music);
         Pa_Terminate();
+        free(frames);
+        close(pipes[1]);
     }
     return 0;
 }
