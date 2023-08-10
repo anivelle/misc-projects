@@ -36,11 +36,7 @@ int ended = 0;
 char *file = "libera.mp3";
 
 int main(int argc, char *argv[]) {
-    PaErrorCode err = Pa_Initialize();
-    if (err != paNoError) {
-        printf("Issue starting PortAudio.\n");
-        return 1;
-    }
+    PaErrorCode err;
 
     SF_INFO info;
     info.format = 0;
@@ -56,11 +52,11 @@ int main(int argc, char *argv[]) {
 
     pid_t child = fork();
 
+    frames = calloc(FRAMECOUNT * info.channels, sizeof(float));
     signed long available;
     sf_count_t count = -1;
 
     if (child) {
-        frames = malloc(FRAMECOUNT * info.channels);
         close(pipes[1]);
         int index = 0;
         available = 1024;
@@ -71,20 +67,24 @@ int main(int argc, char *argv[]) {
             /* printf("%ld\n", count); */
             BeginDrawing();
             ClearBackground(BLACK);
-            read(pipes[0], frames, available * sizeof(float));
+            read(pipes[0], frames, available * info.channels * sizeof(float));
             // printf("%f\n", frames[1023]);
             DrawRectangle(10 * (index % 64), 40 * (index % 24), 10, 40, BLUE);
             index++;
             EndDrawing();
         }
-        // free(frames);
+        free(frames);
         if (!kill(child, 0))
             kill(child, SIGTERM); // Makes sure the music stops with the window
         CloseWindow();
         close(pipes[0]);
     } else {
+        err = Pa_Initialize();
+        if (err != paNoError) {
+            printf("Issue starting PortAudio.\n");
+            return 1;
+        }
         signal(SIGTERM, term_catch);
-        frames = malloc(FRAMECOUNT * info.channels);
         music = sf_open(file, SFM_READ, &info);
         close(pipes[0]);
         err = Pa_OpenDefaultStream(&stream, 0, info.channels, paFloat32,
@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
                 // printf("Running\n");
                 count = sf_readf_float(music, frames, available);
                 Pa_WriteStream(stream, frames, available);
-                write(pipes[1], frames, available * sizeof(float));
+                write(pipes[1], frames,
+                      available * info.channels * sizeof(float));
                 if (count < available)
                     break;
             }
