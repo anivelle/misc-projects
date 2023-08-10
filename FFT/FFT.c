@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
         // Why does this work but float complex *fft[2] doesn't???
         float complex **fft = malloc(2 * sizeof(float complex *));
-        fft[0] = malloc(FRAMECOUNT * sizeof(float complex));
+        fft[0] = calloc(FRAMECOUNT, sizeof(float complex));
         fft[1] = calloc(FRAMECOUNT, sizeof(float complex));
 
         float **channels = malloc(2 * sizeof(float *));
@@ -98,8 +98,10 @@ int main(int argc, char *argv[]) {
         free(frames);
         free(fft[0]);
         free(fft[1]);
+        free(fft);
         free(channels[0]);
         free(channels[1]);
+        free(channels);
         if (!kill(child, 0))
             // Makes sure the music stops with the window if it hasn't already
             kill(child, SIGTERM);
