@@ -53,32 +53,60 @@ int main(int argc, char *argv[]) {
     pid_t child = fork();
 
     frames = calloc(FRAMECOUNT * info.channels, sizeof(float));
+    if (!frames) {
+        printf("Issue allocating frame array\n");
+        return -1;
+    }
     signed long available;
     sf_count_t count = -1;
 
     if (child) {
+        // Parent process displays the visualization
         close(pipes[1]);
         int index = 0;
+
+        // Why does this work but float complex *fft[2] doesn't???
+        float complex **fft = malloc(2 * sizeof(float complex *));
+        fft[0] = malloc(FRAMECOUNT * sizeof(float complex));
+        fft[1] = calloc(FRAMECOUNT, sizeof(float complex));
+
+        float **channels = malloc(2 * sizeof(float *));
+        channels[0] = calloc(FRAMECOUNT, sizeof(float));
+        channels[1] = calloc(FRAMECOUNT, sizeof(float));
+
         available = 1024;
         InitWindow(640, 480, "FFT Visualization");
         SetTargetFPS(60);
         while (!WindowShouldClose()) {
-            /* printf("%ld\n", available); */
-            /* printf("%ld\n", count); */
             BeginDrawing();
             ClearBackground(BLACK);
-            read(pipes[0], frames, available * info.channels * sizeof(float));
-            // printf("%f\n", frames[1023]);
-            DrawRectangle(10 * (index % 64), 40 * (index % 24), 10, 40, BLUE);
-            index++;
+            // Should act as a sort of sync between the parent and child
+            // assuming no errors
+            ssize_t amount = read(pipes[0], frames,
+                                  available * info.channels * sizeof(float));
+            /*printf("%d\n", (int)amount);*/
+            for (int i = 0; i < FRAMECOUNT; i++) {
+                /*printf("%f %f\n", frames[2 * i], frames[2 * i + 1]);*/
+                channels[0][i] = frames[2 * i];
+                channels[1][i] = frames[2 * i + 1];
+            }
+            int height = index / (float)64 * 480;
+            DrawRectangle(10 * index, 480 - height, 10, height, BLUE);
+            index = (index + 1) % 64;
             EndDrawing();
         }
         free(frames);
+        free(fft[0]);
+        free(fft[1]);
+        free(channels[0]);
+        free(channels[1]);
         if (!kill(child, 0))
-            kill(child, SIGTERM); // Makes sure the music stops with the window
+            // Makes sure the music stops with the window if it hasn't already
+            kill(child, SIGTERM);
         CloseWindow();
         close(pipes[0]);
     } else {
+        // Child process plays audio and passes the data to the parent
         err = Pa_Initialize();
         if (err != paNoError) {
             printf("Issue starting PortAudio.\n");
