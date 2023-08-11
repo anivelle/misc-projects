@@ -22,7 +22,7 @@ int callback(const void *input, void *output, unsigned long frameCount,
 
 // Because apparently you gotta do everything yourself around here
 float max(float *array, int length) {
-    float max = -1;
+    float max = -1.0;
     for (int i = 0; i < length; i++) {
         if (array[i] > max)
             max = array[i];
@@ -146,11 +146,12 @@ int main(int argc, char *argv[]) {
                     index = (index + 1) % BUCKETS;
                 }
             }
-            float boxH1;
-            float boxH2;
+            float boxH1, boxH2, max1, max2;
             for (int i = 0; i < BUCKETS; i++) {
-                boxH1 = HEIGHT / 2.0 * height1[i] / max(height1, BUCKETS);
-                boxH2 = HEIGHT / 2.0 * height2[i] / max(height2, BUCKETS);
+                max1 = max(height1, BUCKETS);
+                max2 = max(height2, BUCKETS);
+                boxH1 = HEIGHT / 2.0 * height1[i] / max1;
+                boxH2 = HEIGHT / 2.0 * height2[i] / max2;
                 DrawRectangle(step * i, HEIGHT / 2.0 - boxH1, step, boxH1,
                               GREEN);
                 DrawRectangle(step * i, HEIGHT - boxH2, step, boxH2, BLUE);
