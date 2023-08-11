@@ -8,13 +8,20 @@
 #include <portaudio.h>
 #include <raylib.h>
 
+// TODO:
+// Fix bucket scaling
+// Figure out why there's gaps in the buckets
+// Speed up the calculation
+// Fix audio crashing on certain bucket amounts
+
 #define LENGTH 200
 // 1024 is consistently the amount of frames available to write
 #define FRAMECOUNT 1024
-#define SEQ_STEP 0.1
 #define HEIGHT 480
 #define WIDTH 640
-#define BUCKETS 20
+// 256 is the highest multiple of 2 I can go to without crashing audio
+// Maybe I should define this by the step rather than the number of buckets?
+#define BUCKETS 256
 
 int callback(const void *input, void *output, unsigned long frameCount,
              const PaStreamCallbackTimeInfo *timeInfo,
@@ -115,8 +122,8 @@ int main(int argc, char *argv[]) {
         channels[0] = calloc(FRAMECOUNT, sizeof(float));
         channels[1] = calloc(FRAMECOUNT, sizeof(float));
 
-        available = 1024;
-        InitWindow(640, 480, "FFT Visualization");
+        available = FRAMECOUNT;
+        InitWindow(WIDTH, HEIGHT, "FFT Visualization");
         SetTargetFPS(60);
         while (!WindowShouldClose()) {
             BeginDrawing();
@@ -156,7 +163,7 @@ int main(int argc, char *argv[]) {
                               GREEN);
                 DrawRectangle(step * i, HEIGHT - boxH2, step, boxH2, BLUE);
             }
-            printf("Done\n");
+            /*printf("Done\n");*/
             EndDrawing();
         }
         free(frames);
