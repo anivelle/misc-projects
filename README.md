@@ -26,7 +26,7 @@ Projects:
   - Not sure how far I'll go with this but it's likely to explore some of the
     possible FFT algorithms depending on how hard they are
 
-- Ray Tracing with OpenGL
+- [Ray Tracing with OpenGL][ray-tracing]
   - Exploration of OpenGL with a focus on getting to ray tracing because
     graphics programming (and particularly ray tracing) interests me
   - Not exactly at ray tracing quite yet, as I have not worked with OpenGL much
@@ -37,3 +37,4 @@ Projects:
 [fftGithub]: https://github.com/anivelle/misc-projects/tree/main/FFT
 [FFT]: https://www.youtube.com/watch?v=Xdbk1Pr5WXU
 [drone]: https://github.com/anivelle/drone-controller
+[ray-tracing]: https://github.com/anivelle/misc-projects/tree/main/ray-tracing
