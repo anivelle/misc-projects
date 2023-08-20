@@ -48,7 +48,7 @@ feel like trying.
   - Not exactly at ray tracing quite yet, as I have not worked with OpenGL much
   - Not sure why people use C++ when OpenGL is very clearly C-oriented but
     presumably C++ makes some data easier to work with
-  - Learning from [Learn Opengl](https://learnopengl.com/) and will probably
+  - Learning from [Learn OpenGL](https://learnopengl.com/) and will probably
     diverge when I get to a point where I feel I can move to ray tracing
 
 [flashGithub]: https://github.com/anivelle/misc-projects/tree/main/write-flash
