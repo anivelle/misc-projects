@@ -103,13 +103,13 @@ int main() {
         glClearColor(0.2f, 0.5f, 0.9f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        myShader.use();
         // float timeValue = glfwGetTime();
         // float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
         // int vertexColorLocation = glGetUniformLocation(myShader.ID,
         // "ourColor"); glUniform4f(vertexColorLocation, 0.0f, greenValue,
         // 0.0f, 1.0f);
 
+        myShader.use();
         // Bind the VAO corresponding to the triangle we drew
         glBindVertexArray(VAO);
         // Draw the shape
