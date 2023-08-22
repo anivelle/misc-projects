@@ -26,5 +26,19 @@
     "directory": "/home/alex/Projects/ray-tracing/src",
     "file": "/home/alex/Projects/ray-tracing/src/gl.c",
     "output": "/home/alex/Projects/ray-tracing/src/ray-tracing"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-I",
+      "../include",
+      "-o",
+      "ray-tracing",
+      "shader.cpp"
+    ],
+    "directory": "/home/alex/Projects/ray-tracing/src",
+    "file": "/home/alex/Projects/ray-tracing/src/shader.cpp",
+    "output": "/home/alex/Projects/ray-tracing/src/ray-tracing"
   }
 ]
