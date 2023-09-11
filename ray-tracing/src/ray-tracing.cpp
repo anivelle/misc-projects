@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cmath>
 #include <shader.hpp>
+#include "stb_image.h"
 
 // Automatically resizes the viewport when the window is resized
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
@@ -15,23 +16,36 @@ void processInput(GLFWwindow *window) {
 }
 
 float vertices[] = {
-    0.0f,  -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // 1 bottom right
-    -1.0f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // 1 bottom left
-    -0.5f, 0.5f,  0.0f, 0.0f, 0.0f, 1.0f, // 1 top
-    1.0f,  -0.5f, 0.0f, 0.0f, 0.5f, 1.0f, // 2 bottom right
-    0.0f,  -0.5f, 0.0f, 0.5f, 0.0f, 1.0f, // 2 bottom left
-    0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.5f, // 2 top
+    // positions        colors            texture coords
+    0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
+    0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
+    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
+    -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top left
 };
 
+int width, height, nrChannels;
+float texCoords[]{
+    0.0f, 0.0f, // lower-left corner
+    1.0f, 0.0f, // lower-right corner
+    0.5f, 1.0f, // top-center corner
+};
+
+/**
+ * 3----0
+ * |  / |
+ * | /  |
+ * 2----1
+ * Triangle 1 is indices 0-1-2, triangle 2 is indices 0-2-3
+ */
 // For use with EBO
 unsigned int indices[] = {
-    0, 1, 2, // first triangle
-    3, 4, 5  // second triangle
+    0, 1, 2, 0, 2, 3, // Two triangles of a rectangle
 };
 
 unsigned int VBO;
 unsigned int VAO;
 unsigned int EBO;
+unsigned int texture;
 
 int main() {
     glfwInit();
@@ -63,7 +77,7 @@ int main() {
     glBindVertexArray(VAO);
 
     Shader myShader("./vert.glsl", "./frag.glsl");
-    // myShader.use();
+
     //  Generate Vertex Buffer Object (VBO) to pass the GPU large amounts of
     //  data quickly
     glGenBuffers(1, &VBO);
@@ -82,14 +96,61 @@ int main() {
     // of the way down
     // This is bound to the vertices array due to the previous (and only) VBO
     // being bound to the array buffer when we called this.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                           (void *)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                           (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                          (void *)(6 * sizeof(float)));
     // Argument is the vertex attribute position, in this case 0. Attributes are
     // disabled by default
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+
+    // Textures
+    // Not sure if this needs to be inside the VAO declaration
+    // Loads a JPG file and gives us data about it to use
+    unsigned char *data =
+        stbi_load("container.jpg", &width, &height, &nrChannels, 0);
+    if (data) {
+        // It seems the whole process for generating and binding objects is the
+        // same across OpenGL, which is nice
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                        GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        /** Arguments are:
+         *    Texture target: GL_TEXTURE_2D is a single texture target that I
+         *    guess affects all texture objects bound to it? In our case the
+         *    texture we just generated
+         *
+         *    Mipmap level: What the fuck is a mipmap (this argument allows for
+         *    textures to be set for each mipmap level)
+         *    Note: mipmaps are LOD for textures, basically. Would help if
+         *    I hadn't skipped through the tutorial
+         *
+         *    Texture format: RGB, HSV, etc I would assume
+         *
+         *    Width and height of texture
+         *
+         *    Always 0 (legacy)
+         *
+         *    Format of source image (same possible values as texture format)
+         *
+         *    Datatype of source image
+         *
+         *    Actual image data */
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+                     GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    } else {
+        std::cout << "Failed to load texture image" << std::endl;
+    }
+    stbi_image_free(data);
 
     // Unbind the vertex array
     // Bindings done after this point are no longer linked to a VAO
@@ -112,6 +173,9 @@ int main() {
         myShader.use();
         // Bind the VAO corresponding to the triangle we drew
         glBindVertexArray(VAO);
+        // Bind 2D texture
+        // Looks like it may not be a part of the VAO after all
+        glBindTexture(GL_TEXTURE_2D, texture);
         // Draw the shape
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         // Unbind the VAO
