@@ -45,7 +45,7 @@ unsigned int indices[] = {
 unsigned int VBO;
 unsigned int VAO;
 unsigned int EBO;
-unsigned int texture;
+unsigned int texture1, texture2;
 
 int main() {
     glfwInit();
@@ -108,6 +108,8 @@ int main() {
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
 
+    // Flip images when loading them (otherwise everything is upside-down)
+    stbi_set_flip_vertically_on_load(true);
     // Textures
     // Not sure if this needs to be inside the VAO declaration
     // Loads a JPG file and gives us data about it to use
@@ -116,8 +118,11 @@ int main() {
     if (data) {
         // It seems the whole process for generating and binding objects is the
         // same across OpenGL, which is nice
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glGenTextures(1, &texture1);
+        // VAO but for textures
+        glActiveTexture(GL_TEXTURE0);
+        // It is necessary that this is bound before parameters are set
+        glBindTexture(GL_TEXTURE_2D, texture1);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
@@ -147,8 +152,35 @@ int main() {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
                      GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
     } else {
         std::cout << "Failed to load texture image" << std::endl;
+    }
+    stbi_image_free(data);
+
+    // Second texture
+    data = stbi_load("awesomeface.png", &width, &height, &nrChannels, 0);
+
+    if (data) {
+        glGenTextures(1, &texture2);
+        // VAO but for textures
+        glActiveTexture(GL_TEXTURE1);
+        // Texture must be bound for anything after this to take effect, which
+        // does actually make sense
+        glBindTexture(GL_TEXTURE_2D, texture2);
+        // These don't actually have to be set again, because they were attached
+        // to the GL_TEXTURE_2D object when we added the first texture
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+        //                 GL_LINEAR_MIPMAP_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // Image is PNG so there is an alpha channel to account for
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    } else {
+        std::cout << "Failed to load texture 2 image" << std::endl;
     }
     stbi_image_free(data);
 
@@ -156,6 +188,9 @@ int main() {
     // Bindings done after this point are no longer linked to a VAO
     glBindVertexArray(0);
 
+    myShader.use();
+    myShader.setInt("texture1", 0);
+    myShader.setInt("texture2", 1);
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -171,11 +206,14 @@ int main() {
         // 0.0f, 1.0f);
 
         myShader.use();
+        // Looks like it may not be a part of the VAO after all
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture1);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture2);
         // Bind the VAO corresponding to the triangle we drew
         glBindVertexArray(VAO);
         // Bind 2D texture
-        // Looks like it may not be a part of the VAO after all
-        glBindTexture(GL_TEXTURE_2D, texture);
         // Draw the shape
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         // Unbind the VAO
