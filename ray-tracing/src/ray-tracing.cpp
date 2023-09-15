@@ -4,6 +4,9 @@
 #include <cmath>
 #include <shader.hpp>
 #include "stb_image.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 // Automatically resizes the viewport when the window is resized
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
@@ -191,6 +194,44 @@ int main() {
     myShader.use();
     myShader.setInt("texture1", 0);
     myShader.setInt("texture2", 1);
+
+    // Matrix transformations
+    glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
+    // glm::mat4 trans = glm::mat4(1.0f);
+
+    /*
+     * Order of rotations and scaling does not appear to be important, but
+     * translations should be done in code before either of these
+     *
+     * The GLM functions right-multiply the transformation matrices by the input
+     * matrix, meaning when the result is left-multiplied by a vector we end up
+     * with rotation essentially being applied first:
+     * identity matrix i, translation t, rotation r, vector v
+     * glm::translate(i, direction) -> i*t
+     * glm::rotate(i*t, angle) -> i*t*r
+     * To use: i*t*r*v -> rotation, then translation as expected
+     */
+
+    // trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+    // trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0,
+    // 0.0, 1.0));
+
+    // This feels so janky for it being the intended method
+    // Likely prone to a lot of misspelling errors too
+    // I do like the fact that we can locate symbols in code though that is
+    // pretty cool
+    unsigned int transformLoc = glGetUniformLocation(myShader.ID, "transform");
+    /**
+     * Passes the transform matrix to our shader as a uniform
+     * Arguments:
+     *   - Uniform location (which we just got)
+     *   - How many matrices to send
+     *   - Do we want to transpose the matrix - in case our matrices are not
+     *     in column-major ordering (data is stored by columns rather than rows)
+     *   - The actual matrix data
+     */
+    // glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -205,6 +246,15 @@ int main() {
         // "ourColor"); glUniform4f(vertexColorLocation, 0.0f, greenValue,
         // 0.0f, 1.0f);
 
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans =
+            glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
+        trans = glm::translate(trans, glm::vec3(0.5, -0.5, 0.0));
+        trans = glm::rotate(trans, 2 * (float)glfwGetTime(),
+                            glm::vec3(0.0, 0.0, 1.0));
+        trans = glm::scale(
+            trans, glm::vec3(glm::asin(glm::sin((float)glfwGetTime()))));
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
         myShader.use();
         // Looks like it may not be a part of the VAO after all
         glActiveTexture(GL_TEXTURE0);
