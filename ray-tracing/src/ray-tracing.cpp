@@ -18,12 +18,57 @@ void processInput(GLFWwindow *window) {
         glfwSetWindowShouldClose(window, true);
 }
 
+// float vertices[] = {
+//// positions        colors            texture coords
+// 0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
+// 0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
+//-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
+//-0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top left
+//};
+
+// I fully copy-pasted this no way I'm typing them all out
 float vertices[] = {
-    // positions        colors            texture coords
-    0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
-    0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
-    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-    -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, // top left
+    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, //
+    0.5f, -0.5f, -0.5f, 1.0f, 0.0f,  //
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,   //
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,   //
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,  //
+    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, //
+                                     //
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,  //
+    0.5f, -0.5f, 0.5f, 1.0f, 0.0f,   //
+    0.5f, 0.5f, 0.5f, 1.0f, 1.0f,    //
+    0.5f, 0.5f, 0.5f, 1.0f, 1.0f,    //
+    -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,   //
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,  //
+                                     //
+    -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,   //
+    -0.5f, 0.5f, -0.5f, 1.0f, 1.0f,  //
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, //
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, //
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,  //
+    -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,   //
+                                     //
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,    //
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,   //
+    0.5f, -0.5f, -0.5f, 0.0f, 1.0f,  //
+    0.5f, -0.5f, -0.5f, 0.0f, 1.0f,  //
+    0.5f, -0.5f, 0.5f, 0.0f, 0.0f,   //
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,    //
+                                     //
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, //
+    0.5f, -0.5f, -0.5f, 1.0f, 1.0f,  //
+    0.5f, -0.5f, 0.5f, 1.0f, 0.0f,   //
+    0.5f, -0.5f, 0.5f, 1.0f, 0.0f,   //
+    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,  //
+    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, //
+                                     //
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,  //
+    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,   //
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,    //
+    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,    //
+    -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,   //
+    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f   //
 };
 
 int width, height, nrChannels;
@@ -41,9 +86,9 @@ float texCoords[]{
  * Triangle 1 is indices 0-1-2, triangle 2 is indices 0-2-3
  */
 // For use with EBO
-unsigned int indices[] = {
-    0, 1, 2, 0, 2, 3, // Two triangles of a rectangle
-};
+// unsigned int indices[] = {
+// 0, 1, 2, 0, 2, 3, // Two triangles of a rectangle
+//};
 
 unsigned int VBO;
 unsigned int VAO;
@@ -91,17 +136,17 @@ int main() {
     // vertices from a set of unique vertices and indices
     glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-                 GL_STATIC_DRAW);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+    //              GL_STATIC_DRAW);
 
     // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glVertexAttribPointer.xhtml
     // Also https://learnopengl.com/Getting-started/Hello-Triangle around 1/3rd
     // of the way down
     // This is bound to the vertices array due to the previous (and only) VBO
     // being bound to the array buffer when we called this.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
                           (void *)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
                           (void *)(3 * sizeof(float)));
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                           (void *)(6 * sizeof(float)));
@@ -109,7 +154,7 @@ int main() {
     // disabled by default
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
+    // glEnableVertexAttribArray(2);
 
     // Flip images when loading them (otherwise everything is upside-down)
     stbi_set_flip_vertically_on_load(true);
@@ -197,8 +242,7 @@ int main() {
 
     // Matrix transformations
     glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
-    // glm::mat4 trans = glm::mat4(1.0f);
-
+    glm::mat4 trans = glm::mat4(1.0f);
     /*
      * Order of rotations and scaling does not appear to be important, but
      * translations should be done in code before either of these
@@ -232,6 +276,22 @@ int main() {
      */
     // glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
+    // 3D viewing
+
+    // Translate view along z-axis
+    glm::mat view = glm::mat4(1.0f);
+    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+    glm::mat4 projection;
+    projection =
+        glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    unsigned int modelLoc = glGetUniformLocation(myShader.ID, "model");
+    // glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    unsigned int viewLoc = glGetUniformLocation(myShader.ID, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    unsigned int projectionLoc =
+        glGetUniformLocation(myShader.ID, "projection");
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -239,33 +299,41 @@ int main() {
         // Clear the screen
         glClearColor(0.2f, 0.5f, 0.9f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
-        // float timeValue = glfwGetTime();
-        // float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
-        // int vertexColorLocation = glGetUniformLocation(myShader.ID,
-        // "ourColor"); glUniform4f(vertexColorLocation, 0.0f, greenValue,
-        // 0.0f, 1.0f);
-
-        glm::mat4 trans = glm::mat4(1.0f);
-        trans =
-            glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
-        trans = glm::translate(trans, glm::vec3(0.5, -0.5, 0.0));
-        trans = glm::rotate(trans, 2 * (float)glfwGetTime(),
-                            glm::vec3(0.0, 0.0, 1.0));
-        trans = glm::scale(
-            trans, glm::vec3(glm::asin(glm::sin((float)glfwGetTime()))));
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
-        myShader.use();
         // Looks like it may not be a part of the VAO after all
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texture2);
-        // Bind the VAO corresponding to the triangle we drew
+        myShader.use();
+
+        // Transformations can be applied in-plane/local coordinates as long as
+        // they are applied to the right of the other coordinate transformations
+        // Applying them before the model/view/projection pipeline gives some
+        // fun results
+        float timeValue = glfwGetTime();
+        float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+        int vertexColorLocation = glGetUniformLocation(myShader.ID, "ourColor");
+        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+
+        // glm::mat4 trans = glm::mat4(1.0f);
+        //  trans =
+        //  glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
+        //  trans = glm::translate(trans, glm::vec3(0.5, -0.5, 0.0));
+        //  trans = glm::rotate(trans, 2 * (float)glfwGetTime(),
+        //  glm::vec3(0.0, 0.0, 1.0));
+        //  trans = glm::scale(
+        //  trans, glm::vec3(glm::asin(glm::sin((float)glfwGetTime()))));
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, (float)glfwGetTime(),
+                            glm::vec3(0.5f, 1.0f, 0.0f));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        // glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+        //  Bind the VAO corresponding to the triangle we drew
         glBindVertexArray(VAO);
         // Bind 2D texture
         // Draw the shape
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
         // Unbind the VAO
         glBindVertexArray(0);
         // Display the drawn image to the screen all at once
