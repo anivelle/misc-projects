@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <float.h>
 #include <complex.h>
 #include <math.h>
 #include <sndfile.h>
@@ -21,7 +22,7 @@
 #define WIDTH 640
 // 256 is the highest multiple of 2 I can go to without crashing audio
 // Maybe I should define this by the step rather than the number of buckets?
-#define BUCKETS 256
+#define BUCKETS 42
 
 int callback(const void *input, void *output, unsigned long frameCount,
              const PaStreamCallbackTimeInfo *timeInfo,
@@ -35,6 +36,14 @@ float max(float *array, int length) {
             max = array[i];
     }
     return max;
+}
+float min(float *array, int length) {
+    float min = FLT_MAX;
+    for (int i = 0; i < length; i++) {
+        if (array[i] < min)
+            min = array[i];
+    }
+    return min;
 }
 
 // FFT algorithm from the Cooley-Tukey Wikipedia page following the pseudocode
@@ -144,21 +153,18 @@ int main(int argc, char *argv[]) {
             float height2[BUCKETS];
             // How many to average before drawing a rectangle
             int step = WIDTH / BUCKETS;
-            for (int i = 0; i < FRAMECOUNT; i++) {
-                height1[index] += cabsf(fft_output[0][i]);
-                height2[index] += cabsf(fft_output[1][i]);
-                if (i % step == step - 1) {
-                    height1[index] /= step;
-                    height2[index] /= step;
-                    index = (index + 1) % BUCKETS;
-                }
+            for (int i = 0; i < BUCKETS; i++) {
+                height1[i] = cabsf(fft_output[0][step * i]);
+                height2[i] = cabsf(fft_output[1][step * i]);
             }
-            float boxH1, boxH2, max1, max2;
+            float boxH1, boxH2, max1, max2, min1, min2;
             for (int i = 0; i < BUCKETS; i++) {
                 max1 = max(height1, BUCKETS);
+                min1 = min(height1, BUCKETS);
                 max2 = max(height2, BUCKETS);
-                boxH1 = HEIGHT / 2.0 * height1[i] / max1;
-                boxH2 = HEIGHT / 2.0 * height2[i] / max2;
+                min2 = min(height2, BUCKETS);
+                boxH1 = (height1[i] - min1) / (max1 - min1) * HEIGHT / 2.0;
+                boxH2 = (height2[i] - min2) / (max2 - min2) * HEIGHT / 2.0;
                 DrawRectangle(step * i, HEIGHT / 2.0 - boxH1, step, boxH1,
                               GREEN);
                 DrawRectangle(step * i, HEIGHT - boxH2, step, boxH2, BLUE);
