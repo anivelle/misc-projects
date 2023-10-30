@@ -71,6 +71,12 @@ float vertices[] = {
     -0.5f, 0.5f, -0.5f, 0.0f, 1.0f   //
 };
 
+glm::vec3 cubePositions[] = {
+    glm::vec3(0.0f, 0.0f, 0.0f),    glm::vec3(2.0f, 5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, -2.5f), glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3(2.4f, -0.4f, -3.5f),  glm::vec3(-1.7f, 3.0f, -7.5f),
+    glm::vec3(1.3f, -2.0f, -2.5f),  glm::vec3(1.5f, 2.0f, -2.5f),
+    glm::vec3(1.5f, 0.2f, -1.5f),   glm::vec3(-1.3f, 1.0f, -1.5f)};
 int width, height, nrChannels;
 float texCoords[]{
     0.0f, 0.0f, // lower-left corner
@@ -117,6 +123,7 @@ int main() {
     }
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glEnable(GL_DEPTH_TEST);
 
     // Create a Vertex Array Object (VAO) to contain all of the Vertex Attribute
     // associations.
@@ -169,6 +176,7 @@ int main() {
         glGenTextures(1, &texture1);
         // VAO but for textures
         glActiveTexture(GL_TEXTURE0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // It is necessary that this is bound before parameters are set
         glBindTexture(GL_TEXTURE_2D, texture1);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -267,6 +275,7 @@ int main() {
     unsigned int transformLoc = glGetUniformLocation(myShader.ID, "transform");
     /**
      * Passes the transform matrix to our shader as a uniform
+     * Applied in Shader::setMat4 so I don't have to keep doing it
      * Arguments:
      *   - Uniform location (which we just got)
      *   - How many matrices to send
@@ -278,27 +287,26 @@ int main() {
 
     // 3D viewing
 
-    // Translate view along z-axis
-    glm::mat view = glm::mat4(1.0f);
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+    // God there are a lot of necessary vectors for camera control
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+    glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
 
     glm::mat4 projection;
     projection =
         glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    unsigned int modelLoc = glGetUniformLocation(myShader.ID, "model");
-    // glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    unsigned int viewLoc = glGetUniformLocation(myShader.ID, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    unsigned int projectionLoc =
-        glGetUniformLocation(myShader.ID, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    myShader.setMat4("projection", projection);
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
 
         // Clear the screen
         glClearColor(0.2f, 0.5f, 0.9f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // Looks like it may not be a part of the VAO after all
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
@@ -306,15 +314,16 @@ int main() {
         glBindTexture(GL_TEXTURE_2D, texture2);
         myShader.use();
 
+        // float timeValue = glfwGetTime();
+        // float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+        // int vertexColorLocation = glGetUniformLocation(myShader.ID,
+        // "ourColor"); glUniform4f(vertexColorLocation, 0.0f, greenValue,
+        // 0.0f, 1.0f);
+
         // Transformations can be applied in-plane/local coordinates as long as
         // they are applied to the right of the other coordinate transformations
         // Applying them before the model/view/projection pipeline gives some
         // fun results
-        float timeValue = glfwGetTime();
-        float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
-        int vertexColorLocation = glGetUniformLocation(myShader.ID, "ourColor");
-        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-
         // glm::mat4 trans = glm::mat4(1.0f);
         //  trans =
         //  glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
@@ -323,17 +332,37 @@ int main() {
         //  glm::vec3(0.0, 0.0, 1.0));
         //  trans = glm::scale(
         //  trans, glm::vec3(glm::asin(glm::sin((float)glfwGetTime()))));
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, (float)glfwGetTime(),
-                            glm::vec3(0.5f, 1.0f, 0.0f));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        // glm::mat4 model = glm::mat4(1.0f);
+        // model = glm::rotate(model, (float)glfwGetTime(),
+        // glm::vec3(0.5f, 1.0f, 0.0f));
         // glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
         //  Bind the VAO corresponding to the triangle we drew
         glBindVertexArray(VAO);
         // Bind 2D texture
         // Draw the shape
         // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        for (int i = 0; i < 10; i++) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, cubePositions[i]);
+            float angle;
+            if (i % 3 == 0)
+                angle = 50.0f * glfwGetTime();
+            else
+                angle = 20.0f * i;
+            model = glm::rotate(model, glm::radians(angle),
+                                glm::vec3(1.0f, i / 10.0f, 0.5f));
+
+            myShader.setMat4("model", model);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+        const float radius = 10.0f;
+        float camX = sin(glfwGetTime()) * radius;
+        float camZ = cos(glfwGetTime()) * radius;
+        // Translate view along z-axis
+        glm::mat view = glm::mat4(1.0f);
+        view = glm::lookAt(glm::vec3(camX, 0.0f, camZ), glm::vec3(0.0f), up);
+        myShader.setMat4("view", view);
         // Unbind the VAO
         glBindVertexArray(0);
         // Display the drawn image to the screen all at once
