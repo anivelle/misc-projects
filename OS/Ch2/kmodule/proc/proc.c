@@ -1,13 +1,10 @@
 #include <linux/init.h>
-#include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
-#include <linux/jiffies.h>
-#include <asm/param.h>
 
 #define BUF_SIZE 128
-#define PROC_NAME "hello"
+#define PROC_NAME "proc"
 
 ssize_t proc_read(struct file *file, char __user *usr_buf, size_t count,
                   loff_t *pos);

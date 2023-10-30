@@ -1,0 +1,1 @@
+savedcmd_/home/alex/Projects/OS/Ch2/kmodule/seconds/seconds.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/alex/Projects/OS/Ch2/kmodule/seconds/seconds.ko /home/alex/Projects/OS/Ch2/kmodule/seconds/seconds.o /home/alex/Projects/OS/Ch2/kmodule/seconds/seconds.mod.o;  true
