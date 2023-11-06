@@ -19,25 +19,25 @@ int main(int argc, char *argv[]) {
     struct timeval *ptr;
     memory = shm_open(name, O_CREAT | O_RDWR, 0666);
     ftruncate(memory, sizeof(struct timeval));
+    startTime = (struct timeval *)mmap(0, sizeof(struct timeval),
+                                       PROT_READ | PROT_WRITE, MAP_SHARED,
+                                       memory, 0);
     int child = fork();
-    printf("%d\n", child);
-        wait(NULL);
     if (child) {
-        ptr = (struct timeval *)mmap(0, sizeof(struct timeval), PROT_READ | PROT_WRITE,
-                           MAP_SHARED, memory, 0);
-        startTime = ptr;
+        wait(NULL);
         gettimeofday(endTime, NULL);
-        printf ("Start time: %ld\n", startTime->tv_usec);
-        printf ("End time: %ld\n", endTime->tv_usec);
-
+        // printf("End time: %ld\n", endTime->tv_usec);
+        printf("Time taken: %.5f\n",
+               (endTime->tv_usec - startTime->tv_usec) / 1000000.0);
     } else {
-        // ptr = (struct timeval *)mmap(0, sizeof(struct timeval), PROT_READ | PROT_WRITE,
-        //                    MAP_SHARED, memory, 0);
         gettimeofday(startTime, NULL);
-        // Why is this not printing
-        printf("Child start time: %ld\n", startTime->tv_usec);
-        *ptr = *startTime;
-        //execv(argv[1], args);
+        // printf("Child start time: %ld\n", startTime->tv_usec);
+        printf("Args: ");
+        for (int i = 0; i < argc - 2; i++){ 
+          printf("%s ", args[i]);
+        }
+        printf("\n");
+        execvp(argv[1], args);
     }
-  return 0;
+    return 0;
 }
