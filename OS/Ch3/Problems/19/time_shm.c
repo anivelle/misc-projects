@@ -16,12 +16,12 @@ int main(int argc, char *argv[]) {
     char **args = NULL;
     if (argc > 2)
         args = &argv[2];
-    struct timeval *ptr;
     memory = shm_open(name, O_CREAT | O_RDWR, 0666);
     ftruncate(memory, sizeof(struct timeval));
     startTime = (struct timeval *)mmap(0, sizeof(struct timeval),
                                        PROT_READ | PROT_WRITE, MAP_SHARED,
                                        memory, 0);
+    endTime = malloc(sizeof(struct timeval));
     int child = fork();
     if (child) {
         wait(NULL);
