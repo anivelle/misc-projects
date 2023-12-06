@@ -1,1 +1,0 @@
-savedcmd_/home/alex/Projects/OS/Ch2/kmodule/proc/proc.mod := printf '%s\n'   proc.o | awk '!x[$$0]++ { print("/home/alex/Projects/OS/Ch2/kmodule/proc/"$$0) }' > /home/alex/Projects/OS/Ch2/kmodule/proc/proc.mod

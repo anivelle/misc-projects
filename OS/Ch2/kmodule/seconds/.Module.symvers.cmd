@@ -1,1 +1,0 @@
-savedcmd_/home/alex/Projects/OS/Ch2/kmodule/seconds/Module.symvers :=  scripts/mod/modpost  -a    -N  -o /home/alex/Projects/OS/Ch2/kmodule/seconds/Module.symvers -T /home/alex/Projects/OS/Ch2/kmodule/seconds/modules.order -i Module.symvers -e 

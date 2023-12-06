@@ -1,1 +1,0 @@
-savedcmd_/home/alex/Projects/OS/Ch2/kmodule/simple.mod := printf '%s\n'   simple.o | awk '!x[$$0]++ { print("/home/alex/Projects/OS/Ch2/kmodule/"$$0) }' > /home/alex/Projects/OS/Ch2/kmodule/simple.mod
