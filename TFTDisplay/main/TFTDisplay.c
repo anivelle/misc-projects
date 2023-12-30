@@ -1,13 +1,80 @@
 #include <stdio.h>
-// #include <soc/soc_caps.h>
 #include <esp_heap_caps.h>
 #include <esp_lcd_types.h>
 #include <esp_lcd_panel_commands.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_rgb.h>
 #include <esp_lcd_panel_interface.h>
+#include <driver/i2c.h>
+#include <init_vars.h>
+
+#define IO_ADDR 0x3F
+
+// Stolen functions from CircuitPython library mentioned later
+// (ioexpander_bus_send and pin_change. Although it could be said that all of
+// the initialization for the LCD is stolen from them)
+void pin_change(i2c_cmd_handle_t *i2c_handle_bus, uint8_t set_pins,
+                uint8_t clear_pins) {}
+void ioexpander_bus_send(i2c_cmd_handle_t *i2c_handle_bus, int is_command,
+                         char *data, int data_len) {}
 
 void app_main(void) {
+    // I2C initialization
+    i2c_config_t i2c_config = {.mode = I2C_MODE_MASTER,
+                               .scl_io_num = 18,
+                               .sda_io_num = 8,
+                               .scl_pullup_en = GPIO_PULLUP_ENABLE,
+                               .sda_pullup_en = GPIO_PULLUP_ENABLE,
+                               .master.clk_speed = 400000,
+                               .clk_flags = 0};
+    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, ESP_INTR_FLAG_LEVEL3);
+    i2c_param_config(I2C_NUM_0, &i2c_config);
+
+    // IO Expander initialization
+    i2c_cmd_handle_t i2c_handle = i2c_cmd_link_create();
+
+    // This process is stolen straight from CircuitPython
+    // https://github.com/adafruit/circuitpython/blob/7715ff09cc663b80403f8907fe90c00fd89c9706/shared-module/dotclockframebuffer/__init__.c#L17
+
+    for (int i = 0; i < sizeof(i2c_init);) {
+        char write_len = i2c_init[i];
+        printf("Writing bytes: ");
+        for (int j = 1; j < write_len + 1; j++) {
+            printf("%02X ", i2c_init[i + j]);
+        }
+        printf("\n");
+        esp_err_t err = i2c_master_write_to_device(
+            I2C_NUM_0, IO_ADDR, (uint8_t *)&i2c_init[i + 1], write_len, 50);
+        if (err == ESP_OK)
+            i += write_len + 1;
+    }
+
+    // LCD initialization using SPI over the IO expander
+    // TODO: Actually read through the CircuitPython library instead of just
+    // thinking it's regular I2C
+    /* Who decided that the order of the initialization bytes was going to
+     * differ!?!?!?! Why do the I2C initialization codes have the data length,
+     * then the command, then the data, but the LCD initialization has the
+     * command, then the data length, and then the data??? PICK ONE
+     */
+    for (int i = 0; i < sizeof(lcd_init);) {
+        char write_len = lcd_init[i + 1];
+        char cmd = lcd_init[i];
+        printf("Index %d Writing bytes: ", i);
+        for (int j = 0; j < write_len; j++) {
+            printf("%02X ", lcd_init[i + 2 + j]);
+        }
+        printf("\n");
+        esp_err_t err = i2c_master_write_to_device(I2C_NUM_0, IO_ADDR,
+                                                   (uint8_t *)&cmd, 1, 50);
+        err |= i2c_master_write_to_device(I2C_NUM_0, IO_ADDR,
+                                          (uint8_t *)(&cmd + 2), write_len, 50);
+
+        if (err == ESP_OK)
+            i += write_len + 2;
+    }
+    i2c_cmd_link_delete(i2c_handle);
+
     esp_lcd_panel_handle_t handle = NULL;
     esp_lcd_rgb_panel_config_t config = {
         .data_width = 16,
@@ -47,7 +114,8 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_lcd_panel_reset(handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(handle));
     void *colors = NULL;
-    // colors = heap_caps_malloc(480 * 480 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
+    // colors = heap_caps_malloc(480 * 480 * sizeof(uint16_t),
+    // MALLOC_CAP_SPIRAM);
     esp_lcd_rgb_panel_get_frame_buffer(handle, 1, &colors);
     for (int i = 0; i < 480 * 480; i++) {
         ((uint16_t *)colors)[i] = 0xffff;
