@@ -7,16 +7,32 @@
 #include <esp_lcd_panel_interface.h>
 #include <driver/i2c.h>
 #include <init_vars.h>
+#include <esp_log.h>
 
 #define IO_ADDR 0x3F
+#define GPIO_ADDR 0x01
+
+static uint8_t gpio_status = 0;
+static const char *I2C_ERROR = "I2C";
 
 // Stolen functions from CircuitPython library mentioned later
 // (ioexpander_bus_send and pin_change. Although it could be said that all of
 // the initialization for the LCD is stolen from them)
-void pin_change(i2c_cmd_handle_t *i2c_handle_bus, uint8_t set_pins,
-                uint8_t clear_pins) {}
-void ioexpander_bus_send(i2c_cmd_handle_t *i2c_handle_bus, int is_command,
-                         char *data, int data_len) {}
+esp_err_t pin_change(uint8_t set_pins, uint8_t clear_pins) {
+    uint8_t data[] = {GPIO_ADDR, (gpio_status & ~clear_pins) | set_pins};
+    
+    esp_err_t err =
+        i2c_master_write_to_device(I2C_NUM_0, IO_ADDR, (uint8_t *)&data, 2, 50);
+    if (err == ESP_OK)
+      gpio_status = data[1];
+    else 
+      ESP_LOGW(I2C_ERROR, "Could not send pin change data properly");
+    return err;
+}
+
+esp_err_t ioexpander_bus_send(int is_command, char *data, int data_len) {
+  
+}
 
 void app_main(void) {
     // I2C initialization
@@ -32,7 +48,7 @@ void app_main(void) {
 
     // IO Expander initialization
     i2c_cmd_handle_t i2c_handle = i2c_cmd_link_create();
-
+    if (i2c_handle)
     // This process is stolen straight from CircuitPython
     // https://github.com/adafruit/circuitpython/blob/7715ff09cc663b80403f8907fe90c00fd89c9706/shared-module/dotclockframebuffer/__init__.c#L17
 
@@ -65,14 +81,10 @@ void app_main(void) {
             printf("%02X ", lcd_init[i + 2 + j]);
         }
         printf("\n");
-        esp_err_t err = i2c_master_write_to_device(I2C_NUM_0, IO_ADDR,
-                                                   (uint8_t *)&cmd, 1, 50);
-        err |= i2c_master_write_to_device(I2C_NUM_0, IO_ADDR,
-                                          (uint8_t *)(&cmd + 2), write_len, 50);
 
-        if (err == ESP_OK)
-            i += write_len + 2;
+        i += write_len + 2;
     }
+
     i2c_cmd_link_delete(i2c_handle);
 
     esp_lcd_panel_handle_t handle = NULL;
