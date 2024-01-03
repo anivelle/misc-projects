@@ -11,6 +11,10 @@
 
 #define IO_ADDR 0x3F
 #define GPIO_ADDR 0x01
+#define DELAY 0x80
+#define PICO_MASK 0x80
+#define CLK_MASK 0x01
+#define CS_MASK 0x02
 
 static uint8_t gpio_status = 0;
 static const char *I2C_ERROR = "I2C";
@@ -20,18 +24,35 @@ static const char *I2C_ERROR = "I2C";
 // the initialization for the LCD is stolen from them)
 esp_err_t pin_change(uint8_t set_pins, uint8_t clear_pins) {
     uint8_t data[] = {GPIO_ADDR, (gpio_status & ~clear_pins) | set_pins};
-    
+
     esp_err_t err =
         i2c_master_write_to_device(I2C_NUM_0, IO_ADDR, (uint8_t *)&data, 2, 50);
     if (err == ESP_OK)
-      gpio_status = data[1];
-    else 
-      ESP_LOGW(I2C_ERROR, "Could not send pin change data properly");
+        gpio_status = data[1];
+    else
+        ESP_LOGW(I2C_ERROR, "Could not send pin change data properly");
     return err;
 }
 
-esp_err_t ioexpander_bus_send(int is_command, char *data, int data_len) {
-  
+esp_err_t ioexpander_bus_send(int is_command, uint8_t *data, int data_len) {
+    int dc_mask = is_command ? 0 : 0x100;
+    esp_err_t ret = 0;
+    for (int i = 0; i < data_len; i++) {
+        uint16_t bits = dc_mask | data[i];
+
+        for (int j = 0; j < 9; j++) {
+            if (bits & 0x100) {
+                ret |= pin_change(PICO_MASK, CLK_MASK | CS_MASK);
+            } else {
+                ret |= pin_change(0, PICO_MASK | CLK_MASK | CS_MASK);
+            }
+
+            pin_change(CLK_MASK, 0);
+            bits <<= 1;
+        }
+    }
+
+    return ret;
 }
 
 void app_main(void) {
@@ -49,39 +70,51 @@ void app_main(void) {
     // IO Expander initialization
     i2c_cmd_handle_t i2c_handle = i2c_cmd_link_create();
     if (i2c_handle)
-    // This process is stolen straight from CircuitPython
-    // https://github.com/adafruit/circuitpython/blob/7715ff09cc663b80403f8907fe90c00fd89c9706/shared-module/dotclockframebuffer/__init__.c#L17
+        // This process is stolen straight from CircuitPython
+        // https://github.com/adafruit/circuitpython/blob/7715ff09cc663b80403f8907fe90c00fd89c9706/shared-module/dotclockframebuffer/__init__.c#L17
 
-    for (int i = 0; i < sizeof(i2c_init);) {
-        char write_len = i2c_init[i];
-        printf("Writing bytes: ");
-        for (int j = 1; j < write_len + 1; j++) {
-            printf("%02X ", i2c_init[i + j]);
+        for (int i = 0; i < sizeof(i2c_init);) {
+            char write_len = i2c_init[i];
+            printf("Writing bytes: ");
+            for (int j = 1; j < write_len + 1; j++) {
+                printf("%02X ", i2c_init[i + j]);
+            }
+            printf("\n");
+            esp_err_t err = i2c_master_write_to_device(
+                I2C_NUM_0, IO_ADDR, (uint8_t *)&i2c_init[i + 1], write_len, 50);
+            if (err == ESP_OK)
+                i += write_len + 1;
         }
-        printf("\n");
-        esp_err_t err = i2c_master_write_to_device(
-            I2C_NUM_0, IO_ADDR, (uint8_t *)&i2c_init[i + 1], write_len, 50);
-        if (err == ESP_OK)
-            i += write_len + 1;
-    }
 
     // LCD initialization using SPI over the IO expander
-    // TODO: Actually read through the CircuitPython library instead of just
-    // thinking it's regular I2C
     /* Who decided that the order of the initialization bytes was going to
-     * differ!?!?!?! Why do the I2C initialization codes have the data length,
+     * differ????? Why do the I2C initialization codes have the data length,
      * then the command, then the data, but the LCD initialization has the
      * command, then the data length, and then the data??? PICK ONE
      */
     for (int i = 0; i < sizeof(lcd_init);) {
-        char write_len = lcd_init[i + 1];
-        char cmd = lcd_init[i];
-        printf("Index %d Writing bytes: ", i);
-        for (int j = 0; j < write_len; j++) {
-            printf("%02X ", lcd_init[i + 2 + j]);
-        }
-        printf("\n");
+        uint8_t write_len = lcd_init[i + 1];
+        uint8_t cmd = lcd_init[i];
+        uint8_t *data = (uint8_t *)&lcd_init[i + 2];
+        uint8_t delay = (write_len & DELAY) != 0;
+        write_len &= ~DELAY;
+        
+        ioexpander_bus_send(true, &cmd, 1);
+        ioexpander_bus_send(false, data, write_len);
+        
+        pin_change(0, CLK_MASK);  // Idle clock
+        pin_change(CS_MASK, 0);   // Disconnect chip select
+    
+        if (delay) {
+          write_len++;
+          uint16_t delay_len = lcd_init[i + 1 + write_len];
+          // Judging by my initialization this is never the case but better safe
+          // than sorry or whatever
+          if (delay_len == 255) {
+            delay_len = 500;
+          }
 
+        }
         i += write_len + 2;
     }
 
