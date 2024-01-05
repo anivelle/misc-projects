@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <esp_heap_caps.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <esp_lcd_types.h>
 #include <esp_lcd_panel_commands.h>
 #include <esp_lcd_panel_ops.h>
@@ -15,6 +17,9 @@
 #define PICO_MASK 0x80
 #define CLK_MASK 0x01
 #define CS_MASK 0x02
+#define RST_MASK 0x4
+#define WIDTH 480
+#define HEIGHT 480
 
 static uint8_t gpio_status = 0;
 static const char *I2C_ERROR = "I2C";
@@ -85,7 +90,11 @@ void app_main(void) {
             if (err == ESP_OK)
                 i += write_len + 1;
         }
-
+    pin_change(CS_MASK, CLK_MASK | RST_MASK);
+    
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+    pin_change(RST_MASK, 0);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     // LCD initialization using SPI over the IO expander
     /* Who decided that the order of the initialization bytes was going to
      * differ????? Why do the I2C initialization codes have the data length,
@@ -99,11 +108,11 @@ void app_main(void) {
         uint8_t delay = (write_len & DELAY) != 0;
         write_len &= ~DELAY;
         
-        ioexpander_bus_send(true, &cmd, 1);
-        ioexpander_bus_send(false, data, write_len);
+        esp_err_t err = ioexpander_bus_send(true, &cmd, 1);
+        err |= ioexpander_bus_send(false, data, write_len);
         
-        pin_change(0, CLK_MASK);  // Idle clock
-        pin_change(CS_MASK, 0);   // Disconnect chip select
+        err |= pin_change(0, CLK_MASK);  // Idle clock
+        err |= pin_change(CS_MASK, 0);   // Disconnect chip select
     
         if (delay) {
           write_len++;
@@ -113,9 +122,13 @@ void app_main(void) {
           if (delay_len == 255) {
             delay_len = 500;
           }
-
+          vTaskDelay(delay_len / portTICK_PERIOD_MS);
         }
-        i += write_len + 2;
+
+        if (err == ESP_OK)
+          i += write_len + 2;
+        else 
+          ESP_LOGW(I2C_ERROR, "Can't send LCD init values");
     }
 
     i2c_cmd_link_delete(i2c_handle);
@@ -134,8 +147,8 @@ void app_main(void) {
         .bits_per_pixel = 0,
         .num_fbs = 1,
         .timings = {.pclk_hz = 16000000,
-                    .h_res = 480,
-                    .v_res = 480,
+                    .h_res = WIDTH,
+                    .v_res = HEIGHT,
                     .hsync_pulse_width = 20,
                     .vsync_pulse_width = 40,
                     .hsync_front_porch = 40,
@@ -162,8 +175,8 @@ void app_main(void) {
     // colors = heap_caps_malloc(480 * 480 * sizeof(uint16_t),
     // MALLOC_CAP_SPIRAM);
     esp_lcd_rgb_panel_get_frame_buffer(handle, 1, &colors);
-    for (int i = 0; i < 480 * 480; i++) {
-        ((uint16_t *)colors)[i] = 0xffff;
+    for (int i = 0; i < WIDTH * HEIGHT; i++) {
+        ((uint16_t *)colors)[i] = 0xaffa;
     }
     esp_lcd_panel_draw_bitmap(handle, 0, 0, 480, 480, colors);
 }
