@@ -2,7 +2,7 @@
 #define INIT_VARS_H
 
 const char i2c_init[] = {
-    0x02, 0x03, 0xf1, // set GPIO direction
+    0x02, 0x03, 0x71, // set GPIO direction
     0x02, 0x02, 0x00, // disable all output inversion
   };
 
