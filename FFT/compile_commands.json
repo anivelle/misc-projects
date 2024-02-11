@@ -1,6 +1,16 @@
 [
   {
-    "arguments": ["/usr/bin/gcc", "-c", "-v", "-o", "FFT", "FFT.c"],
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-v",
+      "-Wall",
+      "-fopenmp",
+      "-ggdb",
+      "-o",
+      "FFT",
+      "FFT.c"
+    ],
     "directory": "/home/alex/Projects/FFT",
     "file": "/home/alex/Projects/FFT/FFT.c",
     "output": "/home/alex/Projects/FFT/FFT"

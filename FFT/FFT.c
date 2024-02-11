@@ -8,21 +8,23 @@
 #include <sndfile.h>
 #include <portaudio.h>
 #include <raylib.h>
+#include <omp.h>
+#include <errno.h>
+#include <string.h>
 
 // TODO:
 // Fix bucket scaling
 // Figure out why there's gaps in the buckets
-// Speed up the calculation
+// Speed up the calculation?
 // Fix audio crashing on certain bucket amounts
 
-#define LENGTH 200
 // 1024 is consistently the amount of frames available to write
 #define FRAMECOUNT 1024
 #define HEIGHT 480
-#define WIDTH 640
+#define WIDTH 1024
 // 256 is the highest multiple of 2 I can go to without crashing audio
 // Maybe I should define this by the step rather than the number of buckets?
-#define BUCKETS 42
+#define BUCKETS 256
 
 int callback(const void *input, void *output, unsigned long frameCount,
              const PaStreamCallbackTimeInfo *timeInfo,
@@ -115,14 +117,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     signed long available;
-    sf_count_t count = -1;
 
     if (child) {
         // Parent process displays the visualization
         close(pipes[1]);
         int index = 0;
 
-        // Why does this work but float complex *fft[2] doesn't???
         float complex **fft_output = malloc(2 * sizeof(float complex *));
         fft_output[0] = calloc(FRAMECOUNT, sizeof(float complex));
         fft_output[1] = calloc(FRAMECOUNT, sizeof(float complex));
@@ -139,35 +139,51 @@ int main(int argc, char *argv[]) {
             ClearBackground(BLACK);
             // Should act as a sort of sync between the parent and child
             // assuming no errors
-            ssize_t amount = read(pipes[0], frames,
-                                  available * info.channels * sizeof(float));
-            /*printf("%d\n", (int)amount);*/
-            for (int i = 0; i < FRAMECOUNT; i++) {
-                /*printf("%f %f\n", frames[2 * i], frames[2 * i + 1]);*/
-                channels[0][i] = frames[2 * i];
-                channels[1][i] = frames[2 * i + 1];
-            }
-            fft(channels[0], fft_output[0], FRAMECOUNT);
-            fft(channels[1], fft_output[1], FRAMECOUNT);
-            float height1[BUCKETS];
-            float height2[BUCKETS];
-            // How many to average before drawing a rectangle
-            int step = WIDTH / BUCKETS;
-            for (int i = 0; i < BUCKETS; i++) {
-                height1[i] = cabsf(fft_output[0][step * i]);
-                height2[i] = cabsf(fft_output[1][step * i]);
-            }
-            float boxH1, boxH2, max1, max2, min1, min2;
-            for (int i = 0; i < BUCKETS; i++) {
-                max1 = max(height1, BUCKETS);
-                min1 = min(height1, BUCKETS);
-                max2 = max(height2, BUCKETS);
-                min2 = min(height2, BUCKETS);
-                boxH1 = (height1[i] - min1) / (max1 - min1) * HEIGHT / 2.0;
-                boxH2 = (height2[i] - min2) / (max2 - min2) * HEIGHT / 2.0;
-                DrawRectangle(step * i, HEIGHT / 2.0 - boxH1, step, boxH1,
-                              GREEN);
-                DrawRectangle(step * i, HEIGHT - boxH2, step, boxH2, BLUE);
+            ssize_t amount = 0;
+            // do {
+                amount = read(pipes[0], frames,
+                              available * info.channels * sizeof(float));
+            // } while (amount == 0 && errno == EAGAIN);
+
+            if (amount) {
+                for (int i = 0; i < FRAMECOUNT; i++) {
+                    /*printf("%f %f\n", frames[2 * i], frames[2 * i + 1]);*/
+                    channels[0][i] = frames[2 * i];
+                    channels[1][i] = frames[2 * i + 1];
+                }
+                fft(channels[0], fft_output[0], FRAMECOUNT);
+                fft(channels[1], fft_output[1], FRAMECOUNT);
+                float height1[BUCKETS];
+                float height2[BUCKETS];
+                // How many to average before drawing a rectangle
+                int step = WIDTH / (BUCKETS * 2);
+                if (!step)
+                    step = 1;
+                int chunk = 200;
+#pragma omp parallel for shared(height1, height2, chunk)                       \
+    schedule(dynamic, chunk)
+                for (int i = 0; i < BUCKETS; i++) {
+                    height1[i] = cabsf(fft_output[0][FRAMECOUNT / 2 + step * i]);
+                    height2[i] = cabsf(fft_output[1][FRAMECOUNT / 2 + step * i]);
+                }
+                // printf("Thread %d calculating\n", omp_get_thread_num());
+
+                float boxH1, boxH2, max1, max2, min1, min2;
+#pragma omp parallel
+                {
+                    max1 = max(height1, BUCKETS);
+                    min1 = min(height1, BUCKETS);
+                    max2 = max(height2, BUCKETS);
+                    min2 = min(height2, BUCKETS);
+                }
+
+                for (int i = 0; i < BUCKETS; i++) {
+                    boxH1 = (height1[i] - min1) / (max1 - min1) * HEIGHT / 2.0;
+                    boxH2 = (height2[i] - min2) / (max2 - min2) * HEIGHT / 2.0;
+                    DrawRectangle(step * i, HEIGHT / 2.0 - boxH1, step, boxH1,
+                                  GREEN);
+                    DrawRectangle(step * i, HEIGHT - boxH2, step, boxH2, BLUE);
+                }
             }
             /*printf("Done\n");*/
             EndDrawing();
@@ -193,6 +209,7 @@ int main(int argc, char *argv[]) {
         }
         signal(SIGTERM, term_catch);
         music = sf_open(file, SFM_READ, &info);
+        printf("Channels: %d\n", info.channels);
         close(pipes[0]);
         err = Pa_OpenDefaultStream(&stream, 0, info.channels, paFloat32,
                                    info.samplerate, FRAMECOUNT, NULL, music);
@@ -206,16 +223,20 @@ int main(int argc, char *argv[]) {
 
         while (true) {
             available = Pa_GetStreamWriteAvailable(stream);
+
+            // printf("Checking :%ld\n", available);
             if (available) {
                 // printf("Running\n");
-                count = sf_readf_float(music, frames, available);
-                Pa_WriteStream(stream, frames, available);
+                count = sf_readf_float(music, frames, FRAMECOUNT);
+                // printf("Count: %ld", count);
+                Pa_WriteStream(stream, frames, FRAMECOUNT);
                 write(pipes[1], frames,
-                      available * info.channels * sizeof(float));
-                if (count < available)
+                      FRAMECOUNT * info.channels * sizeof(float));
+                if (count < FRAMECOUNT)
                     break;
             }
         }
+        printf("Child Exiting\n");
         err = Pa_StopStream(stream);
         sf_close(music);
         Pa_Terminate();
