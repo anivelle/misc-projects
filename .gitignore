@@ -2,3 +2,6 @@
 **/.cache/
 raffle-finder/
 *.pdf
+**/sdkconfig*
+**/compile_commands.json
+
