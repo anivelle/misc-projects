@@ -6,8 +6,9 @@
 #include <math.h>
 #include <libnova/libnova.h>
 
-#define NUM_STARS 4150
+#define NUM_STARS 118218
 #define STAR_DIST 10
+#define MOD 1
 
 typedef struct star_data {
     double ra;  // Right ascension in radians
@@ -15,7 +16,7 @@ typedef struct star_data {
     char *name; // Star name (if available)
 } star_data_t;
 
-star_data_t stars[NUM_STARS];
+star_data_t stars[NUM_STARS / MOD];
 
 int main(int argc, char *argv[]) {
     InitWindow(1366, 768, "Celestial Globe");
@@ -26,19 +27,24 @@ int main(int argc, char *argv[]) {
     camera.target = (Vector3){1.0, 0.0, 0.0};
     camera.fovy = 60.0;
     camera.projection = CAMERA_PERSPECTIVE;
-    FILE *star_file = fopen("FK6.txt", "r");
+    FILE *star_file = fopen("hip_main.dat", "r");
     DisableCursor();
 
     // Parse star data and load the array with more easily-drawn values
     char *line = NULL;
-    int i = 0;
+    int i = 0, j = 0;
     size_t len;
+
     while (getline(&line, &len, star_file) > 0) {
+        if (j % MOD != 0) {
+            j++;
+            continue;
+        }
         printf("%s\n", line);
         // Skip the first two columns, I just haven't removed them yet
         char *token = strtok(line, "|");
         token = strtok(NULL, "|");
-        stars[i].name = strtok(NULL, "|");
+        stars[i].name = ""; // strtok(NULL, "|");
         char *ra_str = strtok(NULL, "|");
         char *dec_str = strtok(NULL, "|");
 
@@ -59,10 +65,12 @@ int main(int argc, char *argv[]) {
         printf("Name: %s\n", stars[i].name);
         printf("\tRA: %f\n", stars[i].ra);
         printf("\tDec: %f\n", stars[i].dec);
+        free(line);
         line = NULL;
+        j++;
         i++;
     }
-    free(line);
+    // free(line);
     SetTargetFPS(144);
 
     while (!WindowShouldClose()) {
@@ -70,12 +78,16 @@ int main(int argc, char *argv[]) {
         BeginDrawing();
         ClearBackground(BLACK);
         BeginMode3D(camera);
-        for (int i = 0; i < NUM_STARS; i++) {
+        for (int i = 0; i < NUM_STARS / MOD; i++) {
             double x = STAR_DIST * cos(stars[i].dec) * cos(stars[i].ra);
             double z = STAR_DIST * cos(stars[i].dec) * sin(stars[i].ra);
             double y = STAR_DIST * sin(stars[i].dec);
             Vector3 pos = {x, y, z};
-            DrawSphere(pos, 0.01f, RAYWHITE);
+            double endX = (x - 0.001 * (x + 0.1));
+            double endY = (y - 0.001 * y);
+            double endZ = (z - 0.001 * z);
+            Vector3 endPos = {endX, endY, endZ};
+            DrawLine3D(pos, endPos, RAYWHITE);
         }
         EndMode3D();
         EndDrawing();
