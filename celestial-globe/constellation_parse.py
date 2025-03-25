@@ -7,21 +7,36 @@
     
 """
 import pandas as pd
+from bs4 import BeautifulSoup 
 import requests
 import io
 
 
 def main(): 
     r = requests.get("https://en.wikipedia.org/wiki/Lists_of_stars_by_constellation")
-    constellations = pd.read_html(io.StringIO(r.text))
-    
-    for i in constellations[0].columns:
-        print(constellations[0][i])
-    # r = requests.get("https://en.wikipedia.org/wiki/List_of_stars_in_Ursa_Major")
-    # print(r.text)
-    # data = pd.read_html(r.text, header=0)
-    # print(data[0]["HIP"])
-    # data[0]["HIP"].to_csv("ursa_major.csv")
+    # constellations = pd.read_html(io.StringIO(r.text))
+    soup = BeautifulSoup(r.text, "html.parser")
+    table = soup.find("table")
+    with(open("constellations.csv", "w") as touch):
+        pass
+
+    for constellation in table.find_all("a"):
+        # if (constellation.string in ["Orion"]):
+        #     continue
+        url_name = constellation.string.replace(" ", "_")
+
+        print(url_name)
+        r = requests.get(f"https://en.wikipedia.org/wiki/List_of_stars_in_{url_name}")
+        data = pd.read_html(io.StringIO(r.text), header=0)
+        # print(data[1])
+        index = 0
+        if (url_name == "Vulpecula"):
+            index = 1
+        data = data[index][["HIP"]].apply(lambda x: pd.to_numeric(x, downcast="integer", errors='coerce'))
+        data.dropna(subset=["HIP"], inplace=True)
+
+        # print(data["HIP"])
+        data["HIP"].to_csv("constellations.csv", mode="a", header=False, index=False)
 
 if __name__ == "__main__":
     main()

@@ -7,8 +7,9 @@
 #include <libnova/libnova.h>
 
 // #define NUM_STARS 118218
-#define STAR_DIST 50
-#define MIN_RADIUS 0.05
+#define STAR_DIST 20
+#define MIN_RADIUS 0.01
+#define MAX_RADIUS 0.5
 
 typedef struct star_data {
     double ra;  // Right ascension in radians
@@ -35,8 +36,9 @@ int main(int argc, char *argv[]) {
     camera.fovy = 60.0;
     camera.projection = CAMERA_PERSPECTIVE;
     FILE *star_file = fopen("hip_main.dat", "r");
-    FILE *orion = fopen("orion.csv", "r");
-    FILE *ursa_maj = fopen("ursa_major.csv", "r");
+    // FILE *orion = fopen("orion.csv", "r");
+    // FILE *ursa_maj = fopen("ursa_major.csv", "r");
+    FILE *constellations = fopen("constellations.csv", "r");
     DisableCursor();
 
     // Parse star data and load the array with more easily-drawn values
@@ -44,7 +46,7 @@ int main(int argc, char *argv[]) {
     int i = 0;
     size_t len;
 
-    while (getline(&line, &len, orion) > 0) {
+    while (getline(&line, &len, constellations) > 0) {
         unsigned index = (unsigned)strtol(line, NULL, 10);
         // printf("%b\n", index & mask);
         // printf("%d", hash_table[hash(index)]);
@@ -53,14 +55,14 @@ int main(int argc, char *argv[]) {
         line = NULL;
     }
 
-    while (getline(&line, &len, ursa_maj) > 0) {
-        unsigned index = (unsigned)strtol(line, NULL, 10);
-        // printf("%b\n", index & mask);
-        // printf("%d", hash_table[hash(index)]);
-        render_table[index].render = 1;
-        free(line);
-        line = NULL;
-    }
+    // while (getline(&line, &len, ursa_maj) > 0) {
+    //     unsigned index = (unsigned)strtol(line, NULL, 10);
+    //     // printf("%b\n", index & mask);
+    //     // printf("%d", hash_table[hash(index)]);
+    //     render_table[index].render = 1;
+    //     free(line);
+    //     line = NULL;
+    // }
 
     while (getline(&line, &len, star_file) > 0) {
         // Skip the second column, I just haven't removed them yet
@@ -116,21 +118,18 @@ int main(int argc, char *argv[]) {
                 double z = STAR_DIST * cos(star.dec) * sin(star.ra);
                 double y = STAR_DIST * sin(star.dec);
                 Vector3 pos = {x, y, z};
-                // double endX = (x - 0.001 * (x + 0.1));
-                // double endY = (y - 0.001 * y);
-                // double endZ = (z - 0.001 * z);
-                // Vector3 endPos = {endX, endY, endZ};
-                // DrawLine3D(pos, endPos, RAYWHITE);
                 double radius = 1 / exp(star.vis_mag);
-                DrawSphere(pos, radius < MIN_RADIUS ? MIN_RADIUS : radius, RAYWHITE);
+                radius = radius < MIN_RADIUS ? MIN_RADIUS : radius;
+                radius = radius > MAX_RADIUS ? MAX_RADIUS : radius;
+                DrawSphere(pos, radius, RAYWHITE);
             }
         }
         EndMode3D();
         EndDrawing();
     }
     fclose(star_file);
-    fclose(ursa_maj);
-    fclose(orion);
+    // fclose(ursa_maj);
+    // fclose(orion);
     for (int i = 0; i < sizeof(render_table) / sizeof(render_data_t); i++) {
       if (render_table[i].data != NULL) {
         free(render_table[i].data);
