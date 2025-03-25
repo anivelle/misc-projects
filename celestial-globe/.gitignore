@@ -1,5 +1,7 @@
 compile_commands.json
 celestial-globe
-hip_main.dat 
+*.dat 
+*.csv
+*.html
 FK6.txt
 vgcore*
