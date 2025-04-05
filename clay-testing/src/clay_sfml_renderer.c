@@ -7,8 +7,10 @@
 #include <CSFML/OpenGL.h>
 #include <math.h>
 
+#define MAX_CORNER_POINTS 20
+
 void Clay_SFML_Initialize(sfRenderWindow *window);
-void Clay_SFML_Render(Clay_RenderCommandArray *commands);
+void Clay_SFML_Render(Clay_RenderCommandArray commands);
 void Clay_SFML_Close();
 
 typedef struct {
@@ -60,14 +62,50 @@ sfVector2f sfGetPointCallback(size_t index, void *userData) {
 
 sfRenderWindow *mainWindow;
 
-void Clay_SFML_Initialize(sfRenderWindow *window) {
-  mainWindow = window;
-}
+void Clay_SFML_Initialize(sfRenderWindow *window) { mainWindow = window; }
 
 void Clay_SFML_Close() {
-
-  sfRenderWindow_destroy(mainWindow);
+    sfRenderWindow_destroy(mainWindow);
 }
 
-void Clay_SFML_Render(Clay_RenderCommandArray *commands) {
+void Clay_SFML_Render(Clay_RenderCommandArray commands) {
+    sfRenderWindow_clear(mainWindow, (sfColor){0, 0, 0, 255});
+    for (int index = 0; index < commands.length; index++) {
+        Clay_RenderCommand *command =
+            Clay_RenderCommandArray_Get(&commands, index);
+        switch (command->commandType) {
+        case CLAY_RENDER_COMMAND_TYPE_NONE:
+            break;
+        case CLAY_RENDER_COMMAND_TYPE_RECTANGLE: {
+            Clay_RectangleRenderData *config = &command->renderData.rectangle;
+            Clay_CornerRadius corners = config->cornerRadius;
+            shapedata_t userData = {
+                .cornerPointCount = MAX_CORNER_POINTS,
+                .size = {command->boundingBox.width, command->boundingBox.height},
+                .radius = {corners.topRight, corners.topLeft,
+                           corners.bottomLeft, corners.bottomRight}};
+            sfShape *rect =
+                sfShape_create(sfGetPointCountCallback, sfGetPointCallback, &userData);
+            sfShape_update(rect);
+            sfColor background = sfColor_fromRGBA(config->backgroundColor.r, config->backgroundColor.g, config->backgroundColor.b, config->backgroundColor.a);
+            sfShape_setFillColor(rect, background);
+            sfShape_setPosition(rect, (sfVector2f){command->boundingBox.x, command->boundingBox.y});
+            sfRenderWindow_drawShape(mainWindow, rect, &sfRenderStates_default);
+            sfShape_destroy(rect);
+        }
+        case CLAY_RENDER_COMMAND_TYPE_BORDER:
+            break;
+        case CLAY_RENDER_COMMAND_TYPE_TEXT:
+            break;
+        case CLAY_RENDER_COMMAND_TYPE_IMAGE:
+            break;
+        case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
+            break;
+        case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
+            break;
+        case CLAY_RENDER_COMMAND_TYPE_CUSTOM:
+            break;
+        }
+    }
+    sfRenderWindow_display(mainWindow);
 }
