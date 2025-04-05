@@ -15,7 +15,7 @@ Clay_RenderCommandArray Create_Layout() {
           .backgroundColor = COLOR_WHITE}) {
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                     .height = CLAY_SIZING_GROW(0)}}, .cornerRadius = {10, 50, 100, 150},
-              .backgroundColor = COLOR_BLACK}){}
+              .backgroundColor = COLOR_BLACK, .border = {COLOR_BLUE, CLAY_BORDER_ALL(10)}}){}
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                     .height = CLAY_SIZING_GROW(0)}},
               .backgroundColor = COLOR_BLUE}){}

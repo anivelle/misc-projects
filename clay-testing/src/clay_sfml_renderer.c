@@ -93,7 +93,25 @@ void Clay_SFML_Render(Clay_RenderCommandArray commands) {
             sfRenderWindow_drawShape(mainWindow, rect, &sfRenderStates_default);
             sfShape_destroy(rect);
         }
-        case CLAY_RENDER_COMMAND_TYPE_BORDER:
+        case CLAY_RENDER_COMMAND_TYPE_BORDER:{
+            Clay_RectangleRenderData *config = &command->renderData.rectangle;
+            Clay_CornerRadius corners = config->cornerRadius;
+            shapedata_t userData = {
+                .cornerPointCount = MAX_CORNER_POINTS,
+                .size = {command->boundingBox.width, command->boundingBox.height},
+                .radius = {corners.topRight, corners.topLeft,
+                           corners.bottomLeft, corners.bottomRight}};
+            sfShape *rect =
+                sfShape_create(sfGetPointCountCallback, sfGetPointCallback, &userData);
+            sfShape_update(rect);
+            sfColor outline = sfColor_fromRGBA(config->backgroundColor.r, config->backgroundColor.g, config->backgroundColor.b, config->backgroundColor.a);
+            sfShape_setOutlineColor(rect, outline);
+            sfShape_setOutlineThickness(rect, command->renderData.border.width.bottom);
+            sfShape_setFillColor(rect, sfTransparent);
+            sfShape_setPosition(rect, (sfVector2f){command->boundingBox.x, command->boundingBox.y});
+            sfRenderWindow_drawShape(mainWindow, rect, &sfRenderStates_default);
+            sfShape_destroy(rect);
+        }
             break;
         case CLAY_RENDER_COMMAND_TYPE_TEXT:
             break;
