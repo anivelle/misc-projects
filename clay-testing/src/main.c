@@ -14,7 +14,7 @@ Clay_RenderCommandArray Create_Layout() {
                      .padding = CLAY_PADDING_ALL(30), .childGap=10, .layoutDirection = CLAY_TOP_TO_BOTTOM},
           .backgroundColor = COLOR_WHITE}) {
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
-                                    .height = CLAY_SIZING_GROW(0)}}, .cornerRadius = {10, 50, 100, 150},
+                                    .height = CLAY_SIZING_GROW(0)}}, .cornerRadius =  CLAY_CORNER_RADIUS(10),
               .backgroundColor = COLOR_BLACK, .border = {COLOR_BLUE, CLAY_BORDER_ALL(10)}}){}
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                     .height = CLAY_SIZING_GROW(0)}},

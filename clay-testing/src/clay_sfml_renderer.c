@@ -96,19 +96,21 @@ void Clay_SFML_Render(Clay_RenderCommandArray commands) {
         case CLAY_RENDER_COMMAND_TYPE_BORDER:{
             Clay_RectangleRenderData *config = &command->renderData.rectangle;
             Clay_CornerRadius corners = config->cornerRadius;
+            // Just pick a border radius since they should always be the same
+            size_t border_width = command->renderData.border.width.left;
             shapedata_t userData = {
                 .cornerPointCount = MAX_CORNER_POINTS,
-                .size = {command->boundingBox.width, command->boundingBox.height},
-                .radius = {corners.topRight, corners.topLeft,
-                           corners.bottomLeft, corners.bottomRight}};
+                .size = {command->boundingBox.width - border_width, command->boundingBox.height - border_width},
+                .radius = {corners.topRight - border_width / 2.0, corners.topLeft - border_width / 2.0,
+                           corners.bottomLeft - border_width / 2.0, corners.bottomRight - border_width / 2.0}};
             sfShape *rect =
                 sfShape_create(sfGetPointCountCallback, sfGetPointCallback, &userData);
             sfShape_update(rect);
             sfColor outline = sfColor_fromRGBA(config->backgroundColor.r, config->backgroundColor.g, config->backgroundColor.b, config->backgroundColor.a);
             sfShape_setOutlineColor(rect, outline);
-            sfShape_setOutlineThickness(rect, command->renderData.border.width.bottom);
+            sfShape_setOutlineThickness(rect, border_width);
             sfShape_setFillColor(rect, sfTransparent);
-            sfShape_setPosition(rect, (sfVector2f){command->boundingBox.x, command->boundingBox.y});
+            sfShape_setPosition(rect, (sfVector2f){command->boundingBox.x + border_width / 2.0, command->boundingBox.y + border_width / 2.0});
             sfRenderWindow_drawShape(mainWindow, rect, &sfRenderStates_default);
             sfShape_destroy(rect);
         }
