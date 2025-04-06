@@ -1,3 +1,4 @@
+#define MAX_CORNER_POINTS 30
 #include "./clay_sfml_renderer.c"
 
 #include <stdio.h>
@@ -11,14 +12,25 @@ Clay_RenderCommandArray Create_Layout() {
     Clay_BeginLayout();
     CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                 .height = CLAY_SIZING_GROW(0)},
-                     .padding = CLAY_PADDING_ALL(30), .childGap=10, .layoutDirection = CLAY_TOP_TO_BOTTOM},
+                     .padding = CLAY_PADDING_ALL(30),
+                     .childGap = 10,
+                     .layoutDirection = CLAY_TOP_TO_BOTTOM},
           .backgroundColor = COLOR_WHITE}) {
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
-                                    .height = CLAY_SIZING_GROW(0)}}, .cornerRadius =  CLAY_CORNER_RADIUS(10),
-              .backgroundColor = COLOR_BLACK, .border = {COLOR_BLUE, CLAY_BORDER_ALL(10)}}){}
+                                    .height = CLAY_SIZING_GROW(0)},
+                         .padding = CLAY_PADDING_ALL(20)},
+              .cornerRadius = CLAY_CORNER_RADIUS(30),
+              .backgroundColor = COLOR_BLACK,
+              .border = {COLOR_BLUE, CLAY_BORDER_ALL(10)}}) {
+            CLAY_TEXT(
+                CLAY_STRING(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz The quick brown fox jumps over the lazy dog"),
+                CLAY_TEXT_CONFIG(
+                    {.fontSize = 24, .textColor = COLOR_WHITE, .fontId = 1}));
+        }
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                     .height = CLAY_SIZING_GROW(0)}},
-              .backgroundColor = COLOR_BLUE}){}
+              .backgroundColor = COLOR_BLUE}) {}
     }
     return Clay_EndLayout();
 }
@@ -51,6 +63,15 @@ int main(int argc, char *argv[]) {
     Clay_Initialize(memory_arena, (Clay_Dimensions){shape.x, shape.y},
                     (Clay_ErrorHandler){HandleClayErrors, 0});
     Clay_SFML_Initialize(window);
+    sfFont *fonts[2];
+    fonts[0] = sfFont_createFromFile("/usr/share/fonts/TTF/Roboto-Regular.ttf");
+    fonts[1] = sfFont_createFromFile(
+        "/usr/share/fonts/TTF/FantasqueSansMono-Regular.ttf");
+
+    if (fonts[0] == NULL || fonts[1] == NULL) {
+        printf("Font error\n");
+    }
+    Clay_SetMeasureTextFunction(Clay_SFML_MeasureText, fonts);
 
     // Shape related
     // shapedata_t data = {10, {100, 200}, {0, 0, 0, 0}};
@@ -88,7 +109,7 @@ int main(int argc, char *argv[]) {
             }
         }
         Clay_RenderCommandArray commands = Create_Layout();
-        Clay_SFML_Render(commands);
+        Clay_SFML_Render(commands, fonts);
 
         // Making shapes
         // float circle_radius = 100.0;
