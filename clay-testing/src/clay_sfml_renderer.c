@@ -89,10 +89,6 @@ Clay_Dimensions Clay_SFML_MeasureText(Clay_StringSlice string,
     sfFont **fonts = (sfFont **)userData;
     sfFont *fontToUse = fonts[config->fontId];
 
-    sfText *demoText = sfText_create(fontToUse);
-    float letterSpacing = sfText_getLetterSpacing(demoText);
-    sfText_destroy(demoText);
-
     for (int i = 0; i < string.length; ++i) {
         if (string.chars[i] == '\n') {
             maxTextWidth = fmax(maxTextWidth, lineTextWidth);

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #define MIN_FLOAT_ERR 0.05
+#define WINDOW_DIMENSIONS {1920, 30}
 const Clay_Color COLOR_WHITE = (Clay_Color){255, 255, 255, 255};
 const Clay_Color COLOR_BLACK = (Clay_Color){0, 0, 0, 255};
 const Clay_Color COLOR_BLUE = (Clay_Color){0, 0, 255, 255};
@@ -12,21 +13,19 @@ Clay_RenderCommandArray Create_Layout() {
     Clay_BeginLayout();
     CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                 .height = CLAY_SIZING_GROW(0)},
-                     .padding = CLAY_PADDING_ALL(30),
+                     .padding = CLAY_PADDING_ALL(5),
                      .childGap = 10,
-                     .layoutDirection = CLAY_TOP_TO_BOTTOM},
+                     .layoutDirection = CLAY_LEFT_TO_RIGHT},
           .backgroundColor = COLOR_WHITE}) {
-        CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
+        CLAY({.layout = {.sizing = {.width = CLAY_SIZING_FIT(0),
                                     .height = CLAY_SIZING_GROW(0)},
-                         .padding = CLAY_PADDING_ALL(20)},
-              .cornerRadius = CLAY_CORNER_RADIUS(30),
-              .backgroundColor = COLOR_BLACK,
-              .border = {COLOR_BLUE, CLAY_BORDER_ALL(10)}}) {
+                         .padding = CLAY_PADDING_ALL(0)},
+              .cornerRadius = CLAY_CORNER_RADIUS(5), }) {
             CLAY_TEXT(
                 CLAY_STRING(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz The quick brown fox jumps over the lazy dog"),
                 CLAY_TEXT_CONFIG(
-                    {.fontSize = 24, .textColor = COLOR_WHITE, .fontId = 1}));
+                    {.fontSize = 16, .textColor = COLOR_BLACK, .fontId = 1}));
         }
         CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                     .height = CLAY_SIZING_GROW(0)}},
@@ -52,10 +51,11 @@ void HandleClayErrors(Clay_ErrorData errorData) {
 int main(int argc, char *argv[]) {
     sfContextSettings settings = {.antiAliasingLevel = 8};
     sfRenderWindow *window =
-        sfRenderWindow_create((sfVideoMode){{800, 600}, 10}, "Test Window",
-                              sfResize, sfWindowed, &settings);
+        sfRenderWindow_create((sfVideoMode){WINDOW_DIMENSIONS, 10}, "Test Window",
+                              sfNone, sfWindowed, &settings);
     sfView *view = sfView_create();
     sfVector2u shape = sfRenderWindow_getSize(window);
+    sfRenderWindow_setPosition(window, (sfVector2i){0, 0});
 
     uint32_t total_memory = Clay_MinMemorySize();
     Clay_Arena memory_arena = Clay_CreateArenaWithCapacityAndMemory(
